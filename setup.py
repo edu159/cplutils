@@ -29,4 +29,5 @@ setup(
         "License :: OSI Approved :: BSD License",
     ],
     # scripts=scriptlist,
+    zip_safe=False,
 )
