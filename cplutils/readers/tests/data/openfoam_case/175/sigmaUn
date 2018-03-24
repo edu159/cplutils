@@ -1,0 +1,93 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  3.0.x                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "175";
+    object      sigmaUn;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 2 -2 0 0 0 0];
+
+internalField   uniform -0;
+
+boundaryField
+{
+    movingWall
+    {
+        type            calculated;
+        value           nonuniform List<scalar> 
+16
+(
+0.034699756
+0.034699756
+0.034699756
+0.034699756
+0.034699783
+0.034699783
+0.034699783
+0.034699783
+0.03469981
+0.03469981
+0.03469981
+0.03469981
+0.034699756
+0.034699756
+0.034699756
+0.034699756
+)
+;
+    }
+    CPLReceiveMD
+    {
+        type            calculated;
+        value           nonuniform List<scalar> 
+16
+(
+-0.025759302
+-0.025759304
+-0.025759302
+-0.025759304
+-0.025759329
+-0.025759331
+-0.025759329
+-0.025759331
+-0.025759328
+-0.02575933
+-0.025759328
+-0.02575933
+-0.025759301
+-0.025759304
+-0.025759301
+-0.025759304
+)
+;
+    }
+    streamwiseIn
+    {
+        type            cyclic;
+    }
+    streamwiseOut
+    {
+        type            cyclic;
+    }
+    front
+    {
+        type            cyclic;
+    }
+    back
+    {
+        type            cyclic;
+    }
+}
+
+
+// ************************************************************************* //

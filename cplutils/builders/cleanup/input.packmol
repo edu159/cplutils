@@ -1,0 +1,14 @@
+tolerance 1.0
+filetype xyz
+output test.xyz
+seed -1
+
+structure slab.xyz
+   number 1
+   fixed 0.0 0.0 0.0 0.0 0.0 0.0
+end structure
+
+structure squalane.xyz
+   number 71
+   inside box 2.0 10.0 2.0 34.1 58.0 34.1
+end structure

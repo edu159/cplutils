@@ -1,0 +1,9 @@
+tolerance 2.0
+filetype xyz
+output system.xyz
+seed -1
+
+structure squalane.xyz
+    number 10
+    inside box 2.0 2.0 2.0 28.0 28.0 28.0
+end structure

@@ -1,0 +1,9 @@
+import "squalane.lt"
+
+mol1 = new squalane[10]
+
+write_once("Data Boundary") {
+    0.0 30.0 xlo xhi
+    0.0 30.0 ylo yhi
+    0.0 30.0 zlo zhi
+}

@@ -1,0 +1,11 @@
+import "squalane.lt"
+import "copper.lt"
+
+mol0 = new copper[1]
+mol1 = new squalane[100]
+
+write_once("Data Boundary") {
+    0.0 36.1 xlo xhi
+    0.0 60 ylo yhi
+    0.0 36.1 zlo zhi
+}

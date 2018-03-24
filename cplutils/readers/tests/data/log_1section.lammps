@@ -1,0 +1,471 @@
+LAMMPS (11 Aug 2017)
+# LAMMPS
+
+### OPTION VARIABLES ###
+
+variable runtime string "24:00:30"
+variable rnd_seed equal 68093
+variable DEBUG equal 0
+
+
+#@ General options
+variable units string "lj"
+variable npx equal 2
+variable npy equal 1
+variable npz equal 2
+
+variable cpl_dy equal 10
+variable sig equal 1.0
+variable wall_ncx equal 20
+variable wall_ncz equal 20
+variable wall_ncy equal 3
+variable wall_den equal 1.0
+variable wall_latt_param equal (4/v_wall_den)^(1/3.0)  # For an FCC->N=4
+variable Ly equal 6.0*${cpl_dy}
+variable Ly equal 6.0*10
+variable Lx equal v_wall_ncx*${wall_latt_param}
+variable Lx equal v_wall_ncx*1.5874010519682
+variable Lz equal v_wall_ncz*${wall_latt_param}
+variable Lz equal v_wall_ncz*1.5874010519682
+
+#@ Equilibration
+# TODO:MOdified when restarted
+variable equilibration_mode string "manual" 		#manual|automatic|restart
+variable T0_eq equal 1.1
+variable thermo_type_eq string "langevin" 			#nose-hoover|langevin
+variable barostat_mode_eq string "none" 		#pressure | none
+variable barostat_value_eq equal 3
+variable timestep_eq equal 0.005
+variable steps_eq equal 200
+# TODO:MOdified when restarted
+variable restart_step_eq equal 0
+variable dump_trajectories_eq string "yes"
+
+#@ Nemd
+variable nemd_mode string "manual"
+variable T0_nemd equal 1.1
+variable thermo_type_nemd string "langevin" 		#nose-hoover|langevin
+variable thermo_region_nemd string "wall"
+variable thermo_region_percent_nemd equal 30
+variable barostat_type_nemd string "none"   #pressure|volume-fixed
+variable timestep_nemd equal 0.005
+variable restart_step_nemd equal 0
+variable dump_trajectories_nemd string "yes"
+variable binning_mode string "B1D"
+variable wall_velocity_mode string "velocity_feedback"
+variable wall_velocity_value equal 0.0
+
+# Processor decomposition
+processors ${npx} ${npy} ${npz}
+processors 2 ${npy} ${npz}
+processors 2 1 ${npz}
+processors 2 1 2
+units		${units}
+units		lj
+atom_style	atomic
+boundary p f p
+
+if "${restart_step_eq} > 0" then 	"read_restart restart.equi.*"
+
+# Simulation time available
+timer timeout ${runtime} every 10
+timer timeout 24:00:30 every 10
+New timer settings: style=normal  mode=nosync  timeout=00:00:30
+
+region	boxregion block 0 ${Lx} 0 ${Ly} 0 ${Lz} units box
+region	boxregion block 0 31.748021039364 0 ${Ly} 0 ${Lz} units box
+region	boxregion block 0 31.748021039364 0 60 0 ${Lz} units box
+region	boxregion block 0 31.748021039364 0 60 0 31.748021039364 units box
+if "${equilibration_mode} != restart" then 	"create_box 2 boxregion"
+create_box 2 boxregion
+Created orthogonal box = (0 0 0) to (31.748 60 31.748)
+  2 by 1 by 2 MPI processor grid
+
+# Wall definition (in lattice units)
+variable    wall_area equal lx*lz
+variable    wallbot equal 2*${sig} # Gap of 2x particle size
+variable    wallbot equal 2*1 
+variable    walltop equal v_wallbot+v_wall_ncy*${wall_latt_param}
+variable    walltop equal v_wallbot+v_wall_ncy*1.5874010519682
+lattice fcc ${wall_den}
+lattice fcc 1
+Lattice spacing in x,y,z = 1.5874 1.5874 1.5874
+region wallregion block 0.0 EDGE ${wallbot} ${walltop} 0.0 EDGE units box
+region wallregion block 0.0 EDGE 2 ${walltop} 0.0 EDGE units box
+region wallregion block 0.0 EDGE 2 6.7622031559046 0.0 EDGE units box
+if "${equilibration_mode} != restart" then 	"create_atoms 2 region wallregion units box"
+create_atoms 2 region wallregion units box
+Created 4800 atoms
+group wallgroup region wallregion
+4800 atoms in group wallgroup
+
+# Fluid definition (in box units)
+variable density equal 0.81
+variable fluid_gap equal ${sig}
+variable fluid_gap equal 1
+variable fluidbot equal bound(wallgroup,ymax)+${fluid_gap}
+variable fluidbot equal bound(wallgroup,ymax)+1
+variable fluidtop equal ly-${fluid_gap}
+variable fluidtop equal ly-1
+region fluidregion block 0.0 EDGE ${fluidbot} ${fluidtop} 0.0 EDGE units box
+region fluidregion block 0.0 EDGE 7.3496042078728 ${fluidtop} 0.0 EDGE units box
+region fluidregion block 0.0 EDGE 7.3496042078728 59 0.0 EDGE units box
+variable no_fluid_atoms equal round(${density}*${wall_area}*(${fluidtop}-${fluidbot}+$(v_fluid_gap)))
+variable no_fluid_atoms equal round(0.81*${wall_area}*(${fluidtop}-${fluidbot}+$(v_fluid_gap)))
+variable no_fluid_atoms equal round(0.81*1007.9368399159*(${fluidtop}-${fluidbot}+$(v_fluid_gap)))
+variable no_fluid_atoms equal round(0.81*1007.9368399159*(59-${fluidbot}+$(v_fluid_gap)))
+variable no_fluid_atoms equal round(0.81*1007.9368399159*(59-7.3496042078728+$(v_fluid_gap)))
+variable no_fluid_atoms equal round(0.81*1007.9368399159*(59-7.3496042078728+1))
+
+# Create atoms
+if "${equilibration_mode} != restart" then 	"create_atoms 1 random ${no_fluid_atoms} ${rnd_seed} fluidregion units box"
+create_atoms 1 random ${no_fluid_atoms} ${rnd_seed} fluidregion units box
+create_atoms 1 random 42985 ${rnd_seed} fluidregion units box
+create_atoms 1 random 42985 68093 fluidregion units box
+Created 42985 atoms
+group fluidgroup region fluidregion
+42985 atoms in group fluidgroup
+
+# Thermostat location
+variable thermo_bot equal ${wallbot}
+variable thermo_bot equal 2
+if "${thermo_region_nemd} == wall" then 	"variable thermo_ncy equal 2" 	"variable thermo_top equal ${wallbot}+${thermo_ncy}*${wall_latt_param}" else 	"variable thermo_top equal ${yy}"
+variable thermo_ncy equal 2
+variable thermo_top equal ${wallbot}+${thermo_ncy}*${wall_latt_param}
+variable thermo_top equal 2+${thermo_ncy}*${wall_latt_param}
+variable thermo_top equal 2+2*${wall_latt_param}
+variable thermo_top equal 2+2*1.5874010519682
+region thermoregion block 0.0 EDGE ${thermo_bot} ${thermo_top} 0.0 EDGE units box
+region thermoregion block 0.0 EDGE 2 ${thermo_top} 0.0 EDGE units box
+region thermoregion block 0.0 EDGE 2 5.1748021039364 0.0 EDGE units box
+
+# Barostat location
+variable 	barostat_ncy equal 1
+variable    barostat_bot equal ${wallbot}
+variable    barostat_bot equal 2
+variable 	barostat_top equal ${barostat_bot}+${barostat_ncy}*${wall_latt_param}
+variable 	barostat_top equal 2+${barostat_ncy}*${wall_latt_param}
+variable 	barostat_top equal 2+1*${wall_latt_param}
+variable 	barostat_top equal 2+1*1.5874010519682
+region barostatregion block 0.0 EDGE ${barostat_bot} ${barostat_top} 0.0 EDGE units box
+region barostatregion block 0.0 EDGE 2 ${barostat_top} 0.0 EDGE units box
+region barostatregion block 0.0 EDGE 2 3.5874010519682 0.0 EDGE units box
+
+# Create groups
+group thermogroup region thermoregion
+3200 atoms in group thermogroup
+group barostatgroup region barostatregion
+1600 atoms in group barostatgroup
+group no_thermo_group subtract all thermogroup
+44585 atoms in group no_thermo_group
+
+
+
+# Reflecting wall at the top and bottom
+fix uplowpecular all wall/reflect ylo EDGE yhi EDGE
+
+# Masses
+if "${equilibration_mode} != restart" then 	"mass 1 1.0" 	"mass 2 1.0"
+mass 1 1.0
+mass 2 1.0
+
+# Interactions
+if "${equilibration_mode} != restart" then 	"pair_style	lj/cut 2.2" 	"pair_coeff	1 1 1.0 ${sig} $(2.2+v_sig-1.0)" 	"pair_coeff	2 2 4.0 1.0 2.2"
+pair_style	lj/cut 2.2
+pair_coeff	1 1 1.0 ${sig} $(2.2+v_sig-1.0)
+pair_coeff	1 1 1.0 1 $(2.2+v_sig-1.0)
+pair_coeff	1 1 1.0 1 2.2000000000000001776
+pair_coeff	2 2 4.0 1.0 2.2
+
+
+# Neighbor lists
+neighbor 0.3 bin
+neigh_modify delay 0 every 1 check yes
+
+dump d0 all image 1 dump*_all.ppm type type up 0 1 0 zoom 2.0 box no 0.02
+dump d1 thermogroup image 1 dump*_thermo.ppm type type up 0 1 0 zoom 2.0
+dump d2 thermogroup image 1 dump*_barostat.ppm type type up 0 1 0 zoom 2.0
+dump_modify d1 acolor 2 coral
+dump_modify d2 acolor 2 green
+# dump_modify d1
+run 1
+Neighbor list info ...
+  update every 1 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 2.5
+  ghost atom cutoff = 2.5
+  binsize = 1.25, bins = 26 48 26
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair lj/cut, perpetual
+      attributes: half, newton on
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 8.65 | 8.657 | 8.665 Mbytes
+Step Temp E_pair E_mol TotEng Press 
+       0            0 1.1039784e+15            0 1.1039784e+15 3.489214e+15 
+       1            0 1.1039784e+15            0 1.1039784e+15 3.489214e+15 
+Loop time of 0.149229 on 4 procs for 1 steps with 47785 atoms
+
+Performance: 2894.888 tau/day, 6.701 timesteps/s
+98.5% CPU use with 4 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.0061538  | 0.0080686  | 0.010095   |   2.1 |  5.41
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.00020099 | 0.0022283  | 0.0041442  |   4.0 |  1.49
+Output  | 0.1386     | 0.1386     | 0.13861    |   0.0 | 92.88
+Modify  | 0.00014734 | 0.00015372 | 0.00015879 |   0.0 |  0.10
+Other   |            | 0.0001752  |            |       |  0.12
+
+Nlocal:    11946.2 ave 12127 max 11827 min
+Histogram: 1 0 1 1 0 0 0 0 0 1
+Nghost:    8818 ave 8889 max 8731 min
+Histogram: 1 0 0 1 0 0 0 0 1 1
+Neighs:    314230 ave 317832 max 310502 min
+Histogram: 1 0 0 0 1 1 0 0 0 1
+
+Total # of neighbors = 1256922
+Ave neighs/atom = 26.3037
+Neighbor list builds = 0
+Dangerous builds = 0
+reset_timestep 0
+undump d0
+undump d1
+undump d2
+
+# Minimization
+if "${equilibration_mode} != restart" then 	"minimize 1.0e-4 1.0e-6 100000 1000000" 	"write_restart restart.minimiz.*.mpiio" 	"reset_timestep ${restart_step_eq}"
+minimize 1.0e-4 1.0e-6 100000 1000000
+Per MPI rank memory allocation (min/avg/max) = 9.197 | 9.2 | 9.203 Mbytes
+Step Temp E_pair E_mol TotEng Press 
+       0            0 1.1039784e+15            0 1.1039784e+15 3.489214e+15 
+     374            0   -8.8499171            0   -8.8499171   -1.3563682 
+Loop time of 10.7844 on 4 procs for 374 steps with 47785 atoms
+
+99.7% CPU use with 4 MPI tasks x no OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+     1.10397843263e+15     -8.84908055564     -8.84991710393
+  Force two-norm initial, final = 2.47577e+22 214.978
+  Force max component initial, final = 1.46471e+22 14.2482
+  Final line search alpha, max atom move = 0.00222697 0.0317303
+  Iterations, force evaluations = 374 639
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 5.5764     | 6.0902     | 7.4829     |  32.7 | 56.47
+Neigh   | 2.118      | 2.2967     | 2.6243     |  12.8 | 21.30
+Comm    | 0.24691    | 1.9705     | 2.6644     |  71.2 | 18.27
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.427      |            |       |  3.96
+
+Nlocal:    11946.2 ave 12055 max 11808 min
+Histogram: 1 0 0 0 0 1 0 1 0 1
+Nghost:    8826.5 ave 8895 max 8721 min
+Histogram: 1 0 0 0 0 0 1 1 0 1
+Neighs:    338545 ave 342526 max 335384 min
+Histogram: 1 1 0 0 0 0 1 0 0 1
+
+Total # of neighbors = 1354180
+Ave neighs/atom = 28.339
+Neighbor list builds = 140
+Dangerous builds = 2
+write_restart restart.minimiz.*.mpiio
+reset_timestep ${restart_step_eq}
+reset_timestep 0
+
+# Initial conditions
+velocity all create ${T0_eq} ${rnd_seed} loop geom
+velocity all create 1.1 ${rnd_seed} loop geom
+velocity all create 1.1 68093 loop geom
+variable no_barostat_atoms equal count(barostatgroup)
+variable top_wall_ycoord equal bound(wallgroup,ymax)
+variable control_slab_centre equal (ly-2*${fluid_gap})/2.0+v_top_wall_ycoord+2*${fluid_gap}
+variable control_slab_centre equal (ly-2*1)/2.0+v_top_wall_ycoord+2*${fluid_gap}
+variable control_slab_centre equal (ly-2*1)/2.0+v_top_wall_ycoord+2*1
+variable control_slab_width equal 10
+variable control_slab_ybot equal v_control_slab_centre-${control_slab_width}/2.0
+variable control_slab_ybot equal v_control_slab_centre-10/2.0
+variable control_slab_ytop equal v_control_slab_centre+${control_slab_width}/2.0
+variable control_slab_ytop equal v_control_slab_centre+10/2.0
+variable control_slab_vol equal ${control_slab_width}*lx*lz
+variable control_slab_vol equal 10*lx*lz
+region controlslabregion block 0.0 EDGE ${control_slab_ybot} ${control_slab_ytop}  0.0 EDGE units box
+region controlslabregion block 0.0 EDGE 33.968845032551 ${control_slab_ytop}  0.0 EDGE units box
+region controlslabregion block 0.0 EDGE 33.968845032551 43.968845032551  0.0 EDGE units box
+group controlslabgroup dynamic fluidgroup region controlslabregion
+dynamic group controlslabgroup defined
+variable control_slab_density equal mass(controlslabgroup)/${control_slab_vol}
+variable control_slab_density equal mass(controlslabgroup)/10079.368399159
+variable fluid_width equal ly-v_top_wall_ycoord
+variable fluid_vol equal (ly-v_top_wall_ycoord)*${wall_area}
+variable fluid_vol equal (ly-v_top_wall_ycoord)*1007.9368399159
+
+# Temperature computations
+compute system_temp all temp/com
+compute fluid_temp fluidgroup temp/com
+compute wall_temp wallgroup temp/com
+
+# Compute pressure/stress
+
+# Control slab
+compute stress controlslabgroup stress/atom fluid_temp
+compute stress_sum controlslabgroup reduce sum c_stress[1] c_stress[2] c_stress[3]
+variable control_slab_press equal -(c_stress_sum[1]+c_stress_sum[2]+c_stress_sum[3])/(3*v_control_slab_vol)
+
+#Fluid slab
+compute stress_2 fluidgroup stress/atom fluid_temp
+variable kk atom (c_stress_2[1]+c_stress_2[2]+c_stress_2[3])/(3*${sig}*v_wall_area)
+variable kk atom (c_stress_2[1]+c_stress_2[2]+c_stress_2[3])/(3*1*v_wall_area)
+compute stress_sum_2 fluidgroup reduce sum c_stress_2[1] c_stress_2[2] c_stress_2[3]
+variable fluid_press equal -(c_stress_sum_2[1]+c_stress_sum_2[2]+c_stress_sum_2[3])/(3*v_fluid_vol)
+
+
+# Barostating during equilibration
+if "${barostat_mode_eq} == pressure" then 	"variable force_barostat_eq equal -0.5*vcm(wallgroup,y)+v_barostat_value_eq*${wall_area}/${no_barostat_atoms}"     "fix barostat_fix barostatgroup addforce 0.0 v_force_barostat_eq 0.0 every 1" elif "${barostat_mode_eq} == none" 	"fix barostat_fix wallgroup spring/self 100.0 xyz" else 	"print 'Error'" 	"quit 1"
+fix barostat_fix wallgroup spring/self 100.0 xyz
+
+# Thermostating during equilibration
+if "${thermo_type_eq} == nose_hoover" then 	"fix thermostat_fix all nvt temp ${T0_eq} ${T0_eq} 100.0" elif "${thermo_type_eq} == langevin" 	"fix thermostat_fix all langevin ${T0_eq} ${T0_eq} 100.0 ${rnd_seed}" 	"fix nve_fix all nve" else 	"print 'Error'" 	"quit 1"
+fix thermostat_fix all langevin ${T0_eq} ${T0_eq} 100.0 ${rnd_seed}
+fix thermostat_fix all langevin 1.1 ${T0_eq} 100.0 ${rnd_seed}
+fix thermostat_fix all langevin 1.1 1.1 100.0 ${rnd_seed}
+fix thermostat_fix all langevin 1.1 1.1 100.0 68093
+fix nve_fix all nve
+
+# Fields computations
+compute fieldcompute_eq fluidgroup chunk/atom bin/3d x lower $(lx) y lower $(2*v_sig) z lower $(lz) units box
+compute fieldcompute_eq fluidgroup chunk/atom bin/3d x lower 31.748021039364001439 y lower $(2*v_sig) z lower $(lz) units box
+compute fieldcompute_eq fluidgroup chunk/atom bin/3d x lower 31.748021039364001439 y lower 2 z lower $(lz) units box
+compute fieldcompute_eq fluidgroup chunk/atom bin/3d x lower 31.748021039364001439 y lower 2 z lower 31.748021039364001439 units box
+# compute fieldcompute_eq fluidgroup chunk/atom bin/1d y lower ${sig}  units box
+fix fieldfix_eq fluidgroup ave/chunk 10 2000 20000 fieldcompute_eq density/mass norm none file lammps/fields_eq
+
+variable ctrl_slab_no_particles equal count(controlslabgroup)
+
+# Data dumping
+thermo 100
+thermo_style custom step v_ctrl_slab_no_particles v_fluid_width v_control_slab_density c_system_temp v_control_slab_press v_fluid_press #pe ke evdwl ecoul etotal
+if "${dump_trajectories_eq} == yes" then 	"dump dump_eq all xyz 2000 lammps/traj_eq.xyz"
+dump dump_eq all xyz 2000 lammps/traj_eq.xyz
+timestep ${timestep_eq}
+timestep 0.005
+
+fix cplfix all cpl/init
+variable CPLSTEPS equal 1000000
+fix cplfixconstrain all cpl/constrain
+region cplforceregion block 3.9364e-08 31.748 55 60 3.9364e-08 31.748 units box
+group cplforcegroup dynamic all region cplforceregion every 1
+dynamic group cplforcegroup defined
+fix cplforcefix cplforcegroup cpl/force region cplforceregion
+
+print "# --[EQUILIBRATION]-- #"
+# -- EQUILIBRATION RUN -- #
+variable remaining_steps_eq equal ${steps_eq}-${restart_step_eq}
+variable remaining_steps_eq equal 200-${restart_step_eq}
+variable remaining_steps_eq equal 200-0
+run ${remaining_steps_eq}
+run 200
+Per MPI rank memory allocation (min/avg/max) = 11.86 | 11.9 | 11.96 Mbytes
+Step v_ctrl_slab_no_particles v_fluid_width v_control_slab_density c_system_temp v_control_slab_press v_fluid_press 
+       0         8390    52.031155   0.83239343          1.1  -0.45526802  -0.29307159 
+     100         8380    51.965276    0.8314013   0.56533628    1.2836416    1.5759158 
+     200         8448    51.913413   0.83814776   0.55363483   0.72252867   0.85274528 
+Loop time of 2.68623 on 4 procs for 200 steps with 47785 atoms
+
+Performance: 32164.069 tau/day, 74.454 timesteps/s
+99.5% CPU use with 4 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 1.1355     | 1.3927     | 1.6731     |  21.6 | 51.85
+Neigh   | 0.32903    | 0.3861     | 0.44237    |   9.1 | 14.37
+Comm    | 0.063817   | 0.39991    | 0.71271    |  49.3 | 14.89
+Output  | 0.00827    | 0.008278   | 0.0082989  |   0.0 |  0.31
+Modify  | 0.305      | 0.38822    | 0.47326    |  13.0 | 14.45
+Other   |            | 0.111      |            |       |  4.13
+
+Nlocal:    11946.2 ave 12045 max 11834 min
+Histogram: 1 0 0 0 1 0 0 1 0 1
+Nghost:    8833 ave 8881 max 8750 min
+Histogram: 1 0 0 0 0 0 1 0 0 2
+Neighs:    336242 ave 338871 max 333817 min
+Histogram: 2 0 0 0 0 0 0 0 1 1
+
+Total # of neighbors = 1344967
+Ave neighs/atom = 28.1462
+Neighbor list builds = 23
+Dangerous builds = 0
+if "${equilibration_mode} != restart" then 	"write_restart restart.equi.*"
+write_restart restart.equi.*
+print "# -- [EQUILIBRATION END] -- #"
+# -- EQUILIBRATION RUN END -- #
+
+# Unfix and reseting
+if "${barostat_mode_eq} == pressure" then     "unfix barostat_fix"
+unfix thermostat_fix
+unfix fieldfix_eq
+uncompute fieldcompute_eq
+if "${dump_trajectories_eq} == yes" then 	"undump dump_eq"
+undump dump_eq
+if "${thermo_type_eq} == langevin" then 	"unfix nve_fix"
+unfix nve_fix
+
+if "${barostat_type_nemd} == pressure" then 	"variable Pfunc equal 0.0" 	"variable P equal v_P0+v_Pfunc" 	"variable force_barostat_prod equal v_P*v_wall_area/${no_barostat_atoms}" 	"fix barostat_fix barostatgroup addforce 0.0 v_force_barostat_prod 0.0 every 1" 	"fix wallfix wallgroup spring/self 100.0 z" elif "${barostat_type_nemd} == none"     "print 'Fixed wall. Barostat off.'" else 	"print 'Error'" 	"quit 1"
+print 'Fixed wall. Barostat off.'
+Fixed wall. Barostat off.
+
+
+# thermostating during production
+if "${thermo_type_nemd} == nose_hoover" then 	"fix thermostat_fix thermogroup nvt temp ${T0_nemd} ${T0_nemd} 100.0" 	"fix nve_fix no_thermo_group nve" elif "${thermo_type_nemd} == langevin" 	"fix thermostat_fix thermogroup langevin ${T0_nemd} ${T0_nemd} 1.0 ${rnd_seed}" 	"fix nve_fix all nve" else 	"print 'Error'" 	"quit 1"
+fix thermostat_fix thermogroup langevin ${T0_nemd} ${T0_nemd} 1.0 ${rnd_seed}
+fix thermostat_fix thermogroup langevin 1.1 ${T0_nemd} 1.0 ${rnd_seed}
+fix thermostat_fix thermogroup langevin 1.1 1.1 1.0 ${rnd_seed}
+fix thermostat_fix thermogroup langevin 1.1 1.1 1.0 68093
+fix nve_fix all nve
+
+
+if "${thermo_region_nemd} == wall" then 	"compute temp_mod thermogroup temp/com" else 	"compute temp_mod all temp/partial 0 1 0"
+compute temp_mod thermogroup temp/com
+
+fix_modify thermostat_fix temp temp_mod
+
+variable wall_velcom equal vcm(wallgroup,x)
+
+if "${wall_velocity_mode} == velocity_feedback" then 	"velocity wallgroup set v_wall_velocity_value NULL NULL sum yes units box" elif "${wall_velocity_mode} == force_feedback" 	"variable Kvel equal 10" 	"variable vel_force equal ${Kvel}*(v_wall_velocity_value-v_wall_velcom)" 	"fix wall_velocity_force wallgroup addforce v_vel_force 0.0 0.0 every 1" else 	"print 'Error'" 	"quit 1"
+velocity wallgroup set v_wall_velocity_value NULL NULL sum yes units box
+
+# Binning cells dimensions
+variable dx equal 2
+variable dy equal 2
+variable dz equal 2
+
+# Time averaging
+variable tstep_ratio equal 50
+variable cfd_steps equal 1
+variable write_interval equal v_tstep_ratio*v_cfd_steps
+
+# Quantities computations
+if "${binning_mode} == B1D" then 	"compute fieldcompute fluidgroup chunk/atom bin/1d y lower ${dy} units box" elif "${binning_mode} == B3D" 	"compute fieldcompute fluidgroup chunk/atom bin/3d x lower ${dx} y lower ${dy} z lower ${dz} units box" else 	"print 'Error'" 	"quit 1"
+compute fieldcompute fluidgroup chunk/atom bin/1d y lower ${dy} units box
+compute fieldcompute fluidgroup chunk/atom bin/1d y lower 2 units box
+
+# Temperature profile computation
+compute temp_fluid_y fluidgroup temp/partial 0 1 0 # Thermostat in y
+compute temp_fluid_yz fluidgroup temp/partial 0 1 1 # Thermostat in y and z
+compute chunk_temp_y fluidgroup temp/chunk fieldcompute temp bias temp_fluid_y adof 1.0
+compute chunk_temp_yz fluidgroup temp/chunk fieldcompute temp bias temp_fluid_yz adof 2.0
+compute chunk_temp_com fluidgroup temp/chunk fieldcompute temp com yes # Thermostat substracting com in 3 directions
+fix fieldfix fluidgroup ave/chunk 1 ${tstep_ratio} ${write_interval}  fieldcompute density/mass vx vy vz c_stress_2[*] norm all file lammps/fields_nemd
+fix fieldfix fluidgroup ave/chunk 1 50 ${write_interval}  fieldcompute density/mass vx vy vz c_stress_2[*] norm all file lammps/fields_nemd
+fix fieldfix fluidgroup ave/chunk 1 50 50  fieldcompute density/mass vx vy vz c_stress_2[*] norm all file lammps/fields_nemd
+fix fieldfix2 fluidgroup ave/time 1 ${tstep_ratio} ${write_interval}  c_chunk_temp_y[*][1] c_chunk_temp_yz[*][1] c_chunk_temp_com[*][1] file lammps/fields_temp mode vector
+fix fieldfix2 fluidgroup ave/time 1 50 ${write_int
