@@ -56,7 +56,6 @@ class LogReader(Task):
                         initial_step = int([v for v in lines[ln+1][:-1].split(" ") if v][0])
                         steps1 = int([v for v in lines[ln+2][:-1].split(" ") if v][0])
                         dump_every =  steps1 - initial_step
-                        print dump_every, run_steps
                         output_steps = run_steps / dump_every + 1
                         # By default if no sections provided. Return all the runs.
                         if not self.sections:
@@ -102,13 +101,12 @@ def log_reader(fname, sections=[], columns=[{}]):
     return log.output
 
 class ChunkReader(Task):
-    def __init__(self, fpath, chunktype, twrite=1.0, time_steps=[], L=[], cols=None, order="frame", zerostep=False):
+    def __init__(self, fpath, chunktype, twrite=1.0, time_steps=[], cols=None, order="frame", zerostep=False):
         Task.__init__(self)
         self.fpath = fpath
         self.chunktype = chunktype
         self.twrite = twrite
         self.time_steps = time_steps
-        self.L = L
         self.cols = cols
         self.order = order
         self.output = {}
@@ -130,6 +128,9 @@ class ChunkReader(Task):
         xi1 = list([0.0]*3)
         xi0[0:dims] = map(float, split_line[1:dims+1])
         ncx = ncy = ncz = 1
+        axis0 = [xi0[0]]
+        axis1 = [xi0[1]]
+        axis2 = [xi0[2]]
         # We assume no more than dims=3 (3D space)
         for l in frame0[1:]:
             split_line = re.split("[ /\n]+", l.strip())
@@ -137,17 +138,26 @@ class ChunkReader(Task):
             if xi0[0] == xi1[0]:
                 if xi0[1] == xi1[1]:
                     ncz += 1
+                    axis2.append(xi1[2])
                 else:
                     ncz = 1
+                    axis2 = [axis2[0]]
                     ncy += 1
+                    axis1.append(xi1[1])
                     xi0[1] = xi1[1]
             else:
                 ncy = 1
+                axis1 = [axis1[0]]
                 ncz = 1
+                axis2 = [axis2[0]]
                 ncx += 1
+                axis0.append(xi1[0])
                 xi0[0] = xi1[0]
                 xi0[1] = xi1[1]
-        return [ncx, ncy, ncz][0:dims]
+        axis0 = np.array(axis0)
+        axis1 = np.array(axis1)
+        axis2 = np.array(axis2)
+        return [ncx, ncy, ncz][0:dims], [axis0, axis1, axis2][0:dims]
 
     def _run(self):
         lines = []
@@ -165,8 +175,6 @@ class ChunkReader(Task):
             dims = int(self.chunktype.split("-")[1][0])
             if dims not in [1, 2, 3]:
                 raise Exception("Use spatial-1d, spatial-2d or spatial-3d.")
-            if not self.L:
-                self.L = [1.0]*dims 
             skip_cols = dims + 1
             header_lines = 3
             frame_header_lines = 1
@@ -178,6 +186,12 @@ class ChunkReader(Task):
             frame_header_lines = 9
             rows_per_frame = int(lines[3].split()[0])
             no_cols = len(lines[8].split()[3:])
+        elif self.chunktype == "ave/time-array":
+            skip_cols = 1
+            header_lines = 3
+            frame_header_lines = 1
+            rows_per_frame = int(lines[3].split()[1])
+            no_cols = len(lines[2].split()[skip_cols:-1])
 
         liter = itertools.islice(lines, header_lines, None)
         no_lines = len(lines)
@@ -193,12 +207,9 @@ class ChunkReader(Task):
         if "spatial" in self.chunktype:
             begin = header_lines + frame_header_lines
             end = begin + rows_per_frame
-            ncells = self._get_cells(lines[begin:end], dims=dims)
-            if len(ncells) != len(self.L):
-                raise Exception("Spatial binning is %dD and L has %d dimensions."\
-                                % (len(ncells), len(self.L)))
+            ncells, axis = self._get_cells(lines[begin:end], dims=dims)
         zpad = 0
-        if self.chunktype in ["molecule", "trajectory-xyz"]:
+        if self.chunktype in ["molecule", "trajectory-xyz", "ave/time-array"]:
             if self.order == "frame": 
                 if self.zerostep:
                     zpad = 1
@@ -251,15 +262,11 @@ class ChunkReader(Task):
 
         self.output = {"data": array_out2, "tidx": step_index}
         if "spatial" in self.chunktype:
-            dcell = np.array(self.L) / np.array(ncells)
-            axis = []
-            for i in xrange(len(ncells)):
-                axis.append(np.linspace(dcell[i]/2.0, self.L[i]-dcell[i]/2.0, ncells[i]))
             self.output["axis"] = axis
 
 
 
-def chunk_reader(fpath, chunktype, twrite=1.0, time_steps=[], L=[], cols=None, order="frame", zerostep=False):
-    chunk = ChunkReader(fpath, chunktype, twrite, time_steps, L, cols, order, zerostep)
+def chunk_reader(fpath, chunktype, twrite=1.0, time_steps=[], cols=None, order="frame", zerostep=False):
+    chunk = ChunkReader(fpath, chunktype, twrite, time_steps, cols, order, zerostep)
     chunk.run()
     return chunk.output

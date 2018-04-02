@@ -1,5 +1,6 @@
 from cplutils.readers.lammps import log_reader, chunk_reader
 import pytest
+import numpy as np
 
 # content of test_class.p
 class TestLogReader:
@@ -65,8 +66,19 @@ class TestChunkReader:
         output = chunk_reader(str(datadir["trajectory-xyz.chunk"]), "trajectory-xyz", order="row")
 
     def test_spatial1D(self, datadir):
-        output = chunk_reader(str(datadir["spatial-1d.chunk"]), "spatial-1d", L=[10])
+        output = chunk_reader(str(datadir["spatial-1d.chunk"]), "spatial-1d")
+        assert len(output["axis"]) == 1
+        assert list(output["axis"][0]) == list(np.linspace(1.0, 59.0, 30))
 
     def test_spatial3D(self, datadir):
-        output = chunk_reader(str(datadir["spatial-3d.chunk"]), "spatial-3d", L=[10,10,10])
+        output = chunk_reader(str(datadir["spatial-3d.chunk"]), "spatial-3d")
+        assert len(output["axis"]) == 3
+        assert np.isclose(output["axis"][0], np.linspace(3.61, 32.49, 5)).all()
+        assert np.isclose(output["axis"][1], np.linspace(4.79272, 62.9056, 11)).all()
+        assert np.isclose(output["axis"][2], np.linspace(3.61, 32.49, 5)).all()
 
+    def test_ave_time_array_row(self, datadir):
+        output = chunk_reader(str(datadir["ave-time-array.chunk"]), "ave/time-array", order="row")
+
+    def test_ave_time_array_frame(self, datadir):
+        output = chunk_reader(str(datadir["ave-time-array.chunk"]), "ave/time-array", order="frame")
