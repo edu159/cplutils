@@ -73,9 +73,30 @@ class TestChunkReader:
     def test_spatial3D(self, datadir):
         output = chunk_reader(str(datadir["spatial-3d.chunk"]), "spatial-3d")
         assert len(output["axis"]) == 3
-        assert np.isclose(output["axis"][0], np.linspace(3.61, 32.49, 5)).all()
-        assert np.isclose(output["axis"][1], np.linspace(4.79272, 62.9056, 11)).all()
-        assert np.isclose(output["axis"][2], np.linspace(3.61, 32.49, 5)).all()
+        assert np.allclose(output["axis"][0], np.linspace(3.61, 32.49, 5))
+        assert np.allclose(output["axis"][1], np.linspace(4.79272, 62.9056, 11))
+        assert np.allclose(output["axis"][2], np.linspace(3.61, 32.49, 5))
+        # Selected rows assertions
+        assert np.allclose(output["data"][1,0,1,0,:],\
+               np.array([1.12900e+01,7.56219e-04, -8.71050e-04, -1.36277e-04]))
+        assert np.allclose(output["data"][-1,-1,-2,-1,:],\
+               np.array([2.40500e+01, -3.06655e-04, 3.79669e-04, 4.09706e-04]))
+        assert output["data"].shape[0] == 10
+
+    def test_spatial3D_zeropad(self, datadir):
+        output = chunk_reader(str(datadir["spatial-3d.chunk"]), "spatial-3d", zerostep=True)
+        assert len(output["axis"]) == 3
+        assert np.allclose(output["axis"][0], np.linspace(3.61, 32.49, 5))
+        assert np.allclose(output["axis"][1], np.linspace(4.79272, 62.9056, 11))
+        assert np.allclose(output["axis"][2], np.linspace(3.61, 32.49, 5))
+        # Selected rows assertions
+        assert np.allclose(output["data"][2,0,1,0,:],\
+               np.array([1.12900e+01,7.56219e-04, -8.71050e-04, -1.36277e-04]))
+        assert np.allclose(output["data"][-1,-1,-2,-1,:],\
+               np.array([2.40500e+01, -3.06655e-04, 3.79669e-04, 4.09706e-04]))
+        assert output["data"].shape[0] == 11
+
+
 
     def test_ave_time_array_row(self, datadir):
         output = chunk_reader(str(datadir["ave-time-array.chunk"]), "ave/time-array", order="row")

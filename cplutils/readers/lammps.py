@@ -77,7 +77,7 @@ class LogReader(Task):
                         pass
                 # print s, output_steps
                 if start and s == output_steps:
-                    self.output[current_section]["time"] = xrange(output_steps)
+                    self.output[current_section]["time"] = list(xrange(output_steps))
                     start = False
                     current_section = None
                     run_steps = 0
@@ -90,7 +90,7 @@ class LogReader(Task):
         if current_section is not None and s < (output_steps):
             for c in self.output[current_section]["fields"].values():
                 c.resize(s, refcheck=False)
-                self.output[current_section]["time"] = xrange(s)
+                self.output[current_section]["time"] = list(xrange(s))
 
         return self.output
 
@@ -101,13 +101,12 @@ def log_reader(fname, sections=[], columns=[{}]):
     return log.output
 
 class ChunkReader(Task):
-    def __init__(self, fpath, chunktype, twrite=1.0, time_steps=[], cols=None, order="frame", zerostep=False):
+    def __init__(self, fpath, chunktype, twrite=1.0, time_steps=[], order="frame", zerostep=False):
         Task.__init__(self)
         self.fpath = fpath
         self.chunktype = chunktype
         self.twrite = twrite
         self.time_steps = time_steps
-        self.cols = cols
         self.order = order
         self.output = {}
         self.zerostep = zerostep
@@ -195,8 +194,6 @@ class ChunkReader(Task):
 
         liter = itertools.islice(lines, header_lines, None)
         no_lines = len(lines)
-        if self.cols:
-            no_cols = len(self.cols)
         if self.time_steps:
             no_frames = len(self.time_steps)
             time_steps_dt = (int(s) for s in np.array(self.time_steps)/(self.twrite))
@@ -208,21 +205,19 @@ class ChunkReader(Task):
             begin = header_lines + frame_header_lines
             end = begin + rows_per_frame
             ncells, axis = self._get_cells(lines[begin:end], dims=dims)
-        zpad = 0
+        # Setup padding    
+        if self.zerostep:
+            zpad = 1
+        else:
+            zpad = 0
         if self.chunktype in ["molecule", "trajectory-xyz", "ave/time-array"]:
             if self.order == "frame": 
-                if self.zerostep:
-                    zpad = 1
                 array_out2 = np.zeros((no_frames + zpad, rows_per_frame, no_cols), order='F')
                 array_iter = self._molchunk_frame_iter(array_out2.shape[:-1])
             else:
-                if self.zerostep:
-                    zpad = 1
                 array_out2 = np.zeros((rows_per_frame, no_frames + zpad, no_cols), order='C')
                 array_iter = self._molchunk_row_iter((no_frames, rows_per_frame))
         elif "spatial" in self.chunktype:
-            if self.zerostep:
-                zpad = 1
             shape2 = tuple([no_frames + zpad] + ncells + [no_cols])
             shape = tuple([no_frames] + ncells + [no_cols])
             array_out2 = np.zeros(shape2, order='F')
@@ -240,24 +235,22 @@ class ChunkReader(Task):
         else:
             step_frame = 0
         exit = False
+        once = False
         for n, l in iterator:
             if n == end:
                 if exit: break
                 begin =  frame*(frame_header_lines + rows_per_frame) + frame_header_lines
                 end = begin + rows_per_frame
-                iterator = itertools.islice(liter, begin, end)
                 step_index[(frame+zpad)*self.twrite] = step_frame
                 step_frame += 1
                 try:
                     frame = time_steps_dt.next()
                 except StopIteration:
                     exit = True
-
-            else:
-                if n >= begin and n < end:
-                    split_line = np.fromstring(l, sep=' ')[skip_cols:]
-                    selector = array_iter.next() + (slice(None),)
-                    array_out[selector] = split_line
+            elif n >= begin:
+                split_line = np.fromstring(l, sep=' ')[skip_cols:]
+                selector = array_iter.next() + (slice(None),)
+                array_out[selector] = split_line
 
 
         self.output = {"data": array_out2, "tidx": step_index}
@@ -266,7 +259,7 @@ class ChunkReader(Task):
 
 
 
-def chunk_reader(fpath, chunktype, twrite=1.0, time_steps=[], cols=None, order="frame", zerostep=False):
-    chunk = ChunkReader(fpath, chunktype, twrite, time_steps, cols, order, zerostep)
+def chunk_reader(fpath, chunktype, twrite=1.0, time_steps=[],  order="frame", zerostep=False):
+    chunk = ChunkReader(fpath, chunktype, twrite, time_steps, order, zerostep)
     chunk.run()
     return chunk.output
