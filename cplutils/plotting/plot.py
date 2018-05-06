@@ -41,6 +41,7 @@ def plot_coupled(fields_in, tidx=None, tavg=None, dt=None, times=None, slider=Fa
                 times, fdf_data = compute_mean_field(data, fields["tidx"],
                                                      tavg, dt=dom_opts["twrite"],
                                                      times=times)
+                # fdf_data = data # For tavg=0
 
                 for it, t in enumerate(times):
                     # Search indexes withing the range
@@ -52,6 +53,8 @@ def plot_coupled(fields_in, tidx=None, tavg=None, dt=None, times=None, slider=Fa
                     if update:
                         # Only one handler expected (plot only one at a time)
                         handles[domain][n].set_ydata(fdf_data[:,i])
+                        linfit = np.polyfit(fields["y"][i]+dom_opts["shift"], fdf_data[it,i], 1)
+                        print "Intersection(%s): y = %f" % (domain, np.poly1d(linfit).roots)
                         fig.canvas.draw_idle()
                     else:
                         handle = axarr[n, 0].plot(fields["y"][i]+dom_opts["shift"],\
@@ -62,6 +65,9 @@ def plot_coupled(fields_in, tidx=None, tavg=None, dt=None, times=None, slider=Fa
         for ax in axarr[:-1, 0]:
             ax.get_xaxis().set_visible(False)
 
+        for ax in axarr[:, 0]:
+            ax.relim()
+            ax.autoscale_view()
 
     if slider:
         axcolor = 'gray'
@@ -108,8 +114,11 @@ def plot_error(plot_title, error_label, error, t, mode="mean", error_bars=False,
             axarr[0][i].set_title(label)
             axarr[0][i].set(xlabel=get_field_label("time", units), ylabel="$Error$")
             axarr[1][i].set(xlabel=get_field_label("length", units), ylabel="$Error$")
+            no_rows = 2
         elif plot_type == "contour":
             axarr[0][i].set_title(label)
+            no_rows = len(error_label)
+
         for l, (e, y) in enumerate(error[label]):
             no_cols = len(error.keys()) - 1
             if print_stats:
@@ -154,8 +163,10 @@ def plot_error(plot_title, error_label, error, t, mode="mean", error_bars=False,
                 if l == 1:
                     xlabel = get_field_label("length", units)
                 axarr[l][i].set(xlabel=xlabel, ylabel=ylabel)
-            # Make ticks invisible
-            for ax in axarr[l, 1:no_cols+1]:
+
+        # Make ticks invisible
+        for i in xrange(0, no_rows):
+            for ax in axarr[i, 1:no_cols+1]:
                 ax.get_yaxis().set_visible(False)
          
     fig.savefig(plot_title + ".jpeg")
