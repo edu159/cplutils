@@ -4,7 +4,7 @@ from cplutils.plotting.extras import DiscreteSlider
 import matplotlib.pyplot as plt
 from cplutils.postproc.common import field_labels, get_field_label
 
-def plot_coupled(fields_in, tidx=None, tavg=None, dt=None, times=None, slider=False, savefig=None, limits=None, units="lj", plot_opts=None):
+def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=None, slider=False, savefig=None, limits=None, units="lj", plot_opts=None):
     if slider:
         assert (dt is not None or times is not None) and tavg is not None and tidx is not None
         if times is None:
@@ -60,8 +60,14 @@ def plot_coupled(fields_in, tidx=None, tavg=None, dt=None, times=None, slider=Fa
                         handle = axarr[n, 0].plot(fields["y"][i]+dom_opts["shift"],\
                                                fdf_data[it][i], dom_opts["style"], label=dom_opts["tag"])
                         handles[domain][n] = handle[0]
-                # axarr[n, 0].set_ylabel(fdf["label"])
-                axarr[n, 0].set_ylabel(get_field_label(field_name, units))
+                try:
+                    flabel = get_field_label(field_name, units)
+                except KeyError:
+                    try:
+                        flabel = labels[field_name]
+                    except Exception:
+                        raise Exception("No label found for field '%s'." % field_name) 
+                axarr[n, 0].set_ylabel(flabel)
         for ax in axarr[:-1, 0]:
             ax.get_xaxis().set_visible(False)
 

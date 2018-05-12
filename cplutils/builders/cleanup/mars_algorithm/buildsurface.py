@@ -16,32 +16,35 @@ from ase.lattice.compounds import *
 import ase.io as io
 from ase import Atoms, Atom
 
-index1=4
-index2=4
-index3=4
-mya = 5.038
-myb = 5.038
-myc = 13.772
-myalpha = 90
-mybeta = 90
-mygamma = 120
-# slab = HEX_Fe2O3(directions=[[0,0,0,1],[0,-1,1,0],[2,-1,-1,0]]  ,symbol = ('Fe', 'O'),
-slab = HEX_Fe2O3(directions=[[0,0,0,1],[0,1,-1,0],[-2,1,1,0]],symbol = ('Fe', 'O'),
-latticeconstant={'a':mya,'b':myb, 'c':myc,
-'alpha':myalpha,
-'beta':mybeta,
-'gamma':mygamma},
-size=(index1,index2,index3), pbc=(1,1,1))
-# io.write('hexaFe2O3.xyz', gra, format='xyz')
+if False:
+    ## HCP IRON OXIDE
+    index1=4
+    index2=4
+    index3=4
+    mya = 5.038
+    myb = 5.038
+    myc = 13.772
+    myalpha = 90
+    mybeta = 90
+    mygamma = 120
 
-
+    # slab = HEX_Fe2O3(directions=[[0,0,0,1],[0,-1,1,0],[2,-1,-1,0]]  ,symbol = ('Fe', 'O'),
+    slab = HEX_Fe2O3(directions=[[0,0,0,1],[0,1,-1,0],[-2,1,1,0]],symbol = ('Fe', 'O'),
+    latticeconstant={'a':mya,'b':myb, 'c':myc,
+    'alpha':myalpha,
+    'beta':mybeta,
+    'gamma':mygamma},
+    size=(index1,index2,index3), pbc=(1,1,1))
+    # io.write('hexaFe2O3.xyz', gra, format='xyz')
+    ### HCP IRON OXIDE
+    # write("surface.xyz", slab)
 
 Z = atomic_numbers['Cu']
-# print reference_states[Z]['a']
-# slab = FaceCenteredCubic(directions=[[1,0,0],[0,1,0],[0,0,1]],
-#                          size=(64,10,64), symbol='Cu', pbc=(1,0,1))
+print reference_states[Z]['a']
+slab = FaceCenteredCubic(directions=[[1,0,0],[0,1,0],[0,0,1]],
+                         size=(100,20,100), symbol='Cu', pbc=(1,0,1))
 
-# write("surface.xyz", slab)
+
 a = []
 xmin, ymin, zmin = np.min(slab.arrays['positions'], axis=0)
 print xmin, ymin, zmin
@@ -51,7 +54,8 @@ slab.arrays['positions'][:,2] -= zmin
 xmax, ymax, zmax = np.max(slab.arrays['positions'], axis=0)
 print xmax, ymax, zmax
 
-write('slab_test.xyz', slab)
+
+
 ## READ ROUGHNESS
 fname = "./heightmap.dat"
 with open(fname, 'r') as f:
@@ -117,7 +121,8 @@ plt.colorbar()
 
 keep_list = [atom.index for atom in slab if keep_atom(heightmap, atom.position, (xmax, ymax, zmax))]
 slab = slab[keep_list]
-plt.show()
+write('slab_test.xyz', slab)
+# plt.show()
 
 
 
@@ -163,7 +168,7 @@ def periodic1Dsin_surface(coeffs, scale, Lx, Lz, resx=1000, resz=1000):
 # Add a color bar which maps values to colors.
 # fig.colorbar(surf, shrink=0.5, aspect=5)
 
-plt.show()
+# plt.show()
 def f(k):
     return k
 t0 = time.clock()

@@ -21,10 +21,10 @@ fout  : heightmap filename
 
 n=8
 m=n
-N=128
+N=100
 M=N
-dx=1
-dy=1
+dx=3.61
+dy=3.61
 cutoff=1e-5
 fout='heightmap.dat'
 
