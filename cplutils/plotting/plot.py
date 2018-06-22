@@ -68,6 +68,7 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
                     except Exception:
                         raise Exception("No label found for field '%s'." % field_name) 
                 axarr[n, 0].set_ylabel(flabel)
+
         for ax in axarr[:-1, 0]:
             ax.get_xaxis().set_visible(False)
 
