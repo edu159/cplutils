@@ -84,7 +84,7 @@ class Moltemplate():
         # TODO: Refactor into a function/class to run and log outputs (packmol, moltemplate)
         if success:
             try:
-                output = subprocess.check_output(["/home/eduardo/Desktop/repositories/lammps_scripts_phd/coupled_case/build/cleanup_moltemplate.sh"], stderr=subprocess.STDOUT)
+                output = subprocess.check_output(["cleanup_moltemplate.sh"], stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError as error:
                 output = error.output
                 raise Exception("Error:\n" + str(error.output))
