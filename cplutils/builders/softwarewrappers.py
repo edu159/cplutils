@@ -171,16 +171,16 @@ class Packmol():
                                 raise 
 
 class PackmolSystemWriter:
-    def __init__(self, box_dims, molecules, ftype="xyz", system_name='system'):
+    def __init__(self, box_dims, molecules, packmol_tol=1.5, seed=-1, ftype="xyz", system_name='system'):
         self.molecules = molecules
         self.box_dims = box_dims
         self.system_name = "%s.%s" % (system_name, ftype)
         self.packmol_fname ="%s.%s" % (system_name, "packmol") 
         self.lines = []
-        self.packmol_tol = 1.25
+        self.packmol_tol = packmol_tol
         self.box_tol = 2.0
         self.ftype = ftype
-        self.seed = -1
+        self.seed = seed
 
     def _apply_box_tol(self, box_dims):
         box_dims_out = list(box_dims)
