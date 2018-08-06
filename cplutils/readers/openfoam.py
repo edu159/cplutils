@@ -9,6 +9,14 @@ except:
     print "Error: PyFoam package is required"
     sys.exit(1)
 
+def timestep_foldername(step):
+    if step >= 1e6:
+        a = "{0:.16e}".format(step)
+	print a.split('e')[0].rstrip('0').rstrip('.')+'e'+a.split('e')[1]
+	return a.split('e')[0].rstrip('0').rstrip('.')+'e'+a.split('e')[1]
+    else:
+        return str(step)
+
 def field_reader(casedir, field_name, time_steps=[], boundary=False,
                  boundary_patches=None):
     if boundary:
@@ -16,8 +24,8 @@ def field_reader(casedir, field_name, time_steps=[], boundary=False,
             raise Exception("Boundary patches have to be provided.")
     # Boundary fiel
     time_steps.sort()
-    time_steps_all = [int(os.path.basename(d)) for d in\
-                      glob.glob(os.path.join(casedir,"[0-9]*"))]
+    time_steps_all = [int(float(os.path.basename(d))) for d in\
+                      glob.glob(os.path.join(casedir,"[1-9]*"))]
     time_steps_all.sort()
     if not time_steps:
         time_steps = time_steps_all
@@ -90,7 +98,7 @@ def field_reader(casedir, field_name, time_steps=[], boundary=False,
     steps_index = {}
     for si, step in enumerate(time_steps):
         steps_index[step] = si
-        time_dir = os.path.join(casedir, "%s/%s" % (str(step), field_name))
+        time_dir = os.path.join(casedir, "%s/%s" % (timestep_foldername(step), field_name))
         field_file = ParsedParameterFile(time_dir)
         internal_field = field_file["internalField"]
         field2array(internal_field, get_cell_internal, si)
