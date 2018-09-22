@@ -53,8 +53,9 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
                     if update:
                         # Only one handler expected (plot only one at a time)
                         handles[domain][n].set_ydata(fdf_data[:,i])
-                        linfit = np.polyfit(fields["y"][i]+dom_opts["shift"], fdf_data[it,i], 1)
-                        print "Intersection(%s): y = %f" % (domain, np.poly1d(linfit).roots)
+                        # NOTE: Fit line
+                        # linfit = np.polyfit(fields["y"][i]+dom_opts["shift"], fdf_data[it,i], 1)
+                        # print "Intersection(%s): y = %f" % (domain, np.poly1d(linfit).roots)
                         fig.canvas.draw_idle()
                     else:
                         handle = axarr[n, 0].plot(fields["y"][i]+dom_opts["shift"],\

@@ -95,10 +95,10 @@ class Moltemplate():
 
 
 class Packmol():
-    def __init__(self, packmol_fname="system.packmol", exec_path="packmol"):
+    def __init__(self, packmol_fname="system.packmol", exec_path="packmol", max_time=60):
         self.exec_path = exec_path
         self.packmol_fname= packmol_fname
-        self.max_time = 15 # In minutes
+        self.max_time = max_time # In minutes
         self.current_const_violation = None
         self.current_dist_violation = None
         self.box_tol = 2.0
@@ -106,13 +106,11 @@ class Packmol():
 
     def _constrain_violation(self, line):
         if "Maximum violation of target distance:" in line:
-            print line
-            print line.split(" ")[-1]
             self.current_dist_violation = float(line.split(" ")[-1])
-            print "Distance violation: ", self.current_dist_violation
+            print "  Distance violation: ", self.current_dist_violation
         elif "Maximum violation of the constraints:" in line:
             self.current_const_violation = float(line.split(" ")[-1])
-            print "Constrain violation: ", self.current_const_violation
+            print "  Constrain violation: ", self.current_const_violation, "\n"
         elif "ERROR:" in line:
             raise Exception("Error in Packmol. Check packmol.out for details.")
 
@@ -150,6 +148,9 @@ class Packmol():
             s.register(p.stdout,select.POLLIN)
             time_ini = time.time()
             running = True
+            print "\n[Running packmol]"
+            print "Max running time: %d minutes." % self.max_time
+            print "Tolerances: %f length units." % self.box_tol
             while running:
                 if (abs(time_ini - time.time()) / 60.0) < self.max_time: 
                     if s.poll(1):
@@ -169,6 +170,11 @@ class Packmol():
                                 p.kill()
                                 running = False
                                 raise 
+                else:
+                    print "Warning: Max time running Packmol reached. Lastest configuration saved in 'system.xyz'.\
+                                    \nExiting successfully..."
+                    p.kill()
+                    running = False
 
 class PackmolSystemWriter:
     def __init__(self, box_dims, molecules, packmol_tol=1.5, seed=-1, ftype="xyz", system_name='system'):

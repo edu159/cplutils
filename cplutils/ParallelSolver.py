@@ -3,6 +3,7 @@ import itertools
 
 class CouetteSolver:
     def __init__(self, phi0, dphi0, phi1, dphi1, dt, tini, tfin, dy, L, eta, rho, N=200):
+        print tfin, tini, dt
         self.nsteps = int((tfin-tini)/dt) + 1
         self.tvec = np.linspace(tini, tfin, self.nsteps)
         self.ny = int(L/dy) + 1
@@ -80,12 +81,14 @@ class CouetteSolver:
 
     def compute(self, times_in=[]):
         if not times_in:
+            print "kj4", self.nsteps
             steps = range(self.nsteps)
             self.compute_all = True
         else:
             # TODO check if they are correct
             steps = list(((np.array(times_in) - self.tini)/self.dt).astype(int))
             steps.sort()
+        print steps
         for step in steps:
             print float(step)/float(steps[-1])*100
             self.compute_step(step)
