@@ -88,9 +88,8 @@ class CouetteSolver:
             # TODO check if they are correct
             steps = list(((np.array(times_in) - self.tini)/self.dt).astype(int))
             steps.sort()
-        print steps
         for step in steps:
-            print float(step)/float(steps[-1])*100
+            print "{}%".format(float(step)/float(steps[-1])*100)
             self.compute_step(step)
         if self.compute_stress:
             self.stress = self.stress[steps,:]

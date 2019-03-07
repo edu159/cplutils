@@ -11,14 +11,34 @@ unit_labels = {"lj" : {
                   "time": r"(\tau)",
                   "length": r"(\sigma)", }, 
               "real" : { 
-                  "velocity": r"(\sigma\tau^{-1})",
-                  "density": r"(m\sigma^{-3})",
-                  "pressure": r"(\epsilon\sigma^{-3})",
-                  "stress":r"(\epsilon\sigma^{-3})",
-                  "temperature": r"(\epsilon K_{b}^{-1})",
-                  "time": r"(\tau)",
-                  "length": r"(\sigma)", }, 
+                  "velocity": r"(m/s)",
+                  "density": r"(Kg/m^3)",
+                  "pressure": r"(MPa)",
+                  "stress": r"(MPa)",
+                  "temperature": r"(K)",
+                  "time": r"(ps)",
+                  "length": r"(nm)", }, 
         }
+
+unit_lammps2si_factors = {"lj" : {
+                  "velocity": 1.0, 
+                  "density": 1.0,
+                  "pressure": 1.0,
+                  "stress": 1.0,
+                  "temperature": 1.0,
+                  "time": 1.0,
+                  "length": 1.0, }, 
+              "real" : { 
+                  "velocity": 1e5,
+                  "density": 1660.539040427164,
+                  "pressure": 0.101325, 
+                  "stress": 0.101325,
+                  "temperature": 1.0,
+                  "time": 1e-3,
+                  "length": 0.1, }, 
+        }
+
+
 
 field_labels = { "velocity-x": r"V_{x}",
                   "density": r"\rho",
@@ -28,6 +48,10 @@ field_labels = { "velocity-x": r"V_{x}",
                   "time": r"t",
                   "length": r"L", 
                }
+
+def get_conversion_factor(field, units):
+    strip_fn = field.split("-")[0]
+    return unit_lammps2si_factors[units][strip_fn]
 
 def get_field_label(field_name, units, label=""):
     fn = ""
@@ -84,10 +108,13 @@ def compute_mean_field(data, tidx, tavg, dt=None, times=None):
     for i, t in enumerate(times):
         begin = t - tavg/2.0
         end = t + tavg/2.0
+        # if begin == end:
+        #     data_out[i, ...] = data[tidx[begin]]
+        # else:
         data_out[i, ...] = np.mean(data[tidx[begin]:tidx[end],...], axis=0)
     return times, data_out
 
-def load_fields(path, domain_fields, axis=["x", "y", "z"], ignore_errors=False):
+def load_fields(path, domain_fields, units, axis=["x", "y", "z"] , ignore_errors=False):
     domain_names = domain_fields.keys()
     fields = {}
     for dom in domain_names:
@@ -119,12 +146,18 @@ def load_fields(path, domain_fields, axis=["x", "y", "z"], ignore_errors=False):
                 field_fname = "%s-%s.npy" % (dom, f_name)
                 field_path = os.path.join(path, field_fname)
                 fields[dom]["fields"][f_name] = np.load(field_path)[..., indexes]
+                #TODO: Fix this to something more elegant
+                # if f_name == "stress-xy" and dom =="cfd":
+                #     fields[dom]["fields"][f_name] *= 1e4*9.86923
+                # if f_name == "velocity-x" and dom =="analytical":
+                #     fields[dom]["fields"][f_name] *= 1e-5
+                fields[dom]["fields"][f_name] *= get_conversion_factor(f_name, units)
                 # Remove last dimension if the size is 1. Makes comparison consistent in later operations.
                 fshape = fields[dom]["fields"][f_name].shape
                 if fshape[-1] == 1:
                     fields[dom]["fields"][f_name] = np.squeeze(fields[dom]["fields"][f_name],
                                                                axis=len(fshape)-1)
-            except Exception:
+            except Exception as e:
                 if not ignore_errors:
                     raise Exception("Problem loading field '%s' for domain '%s'." % (field_fname, dom))
                 else:

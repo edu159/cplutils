@@ -44,6 +44,7 @@ def field_reader(casedir, field_name, time_steps=[], boundary=False,
         blockMesh = ParsedBlockMeshDict(os.path.join(casedir,
                                         "constant/polyMesh/blockMeshDict"))
     except Exception as e:
+        print e
         pass
 
     # Compute domain and mesh values

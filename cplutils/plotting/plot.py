@@ -1,5 +1,5 @@
 import numpy as np
-from cplutils.postproc.common import compute_mean_field
+from cplutils.postproc.common import compute_mean_field, get_conversion_factor
 from cplutils.plotting.extras import DiscreteSlider
 import matplotlib.pyplot as plt
 from cplutils.postproc.common import field_labels, get_field_label
@@ -34,8 +34,15 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
 
     def plot(times, update=False):
         axarr[-1, 0].set_xlabel(get_field_label("length", units)) 
+
         for domain, fields in fields_in.items():
             dom_opts = plot_opts[domain]
+            # Search indexes withing the range 
+            if limits is not None:
+                i = np.where((fields["y"]+dom_opts["shift"] >= limits[0]) &\
+                             (fields["y"]+dom_opts["shift"] <= limits[1]) )[0]
+            else:
+                i = slice(None)
             for field_name, data in fields["fields"].items():
                 n = field_names.index(field_name)
                 times, fdf_data = compute_mean_field(data, fields["tidx"],
@@ -43,23 +50,19 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
                                                      times=times)
                 # fdf_data = data # For tavg=0
 
+                if update:
+                    # Only one handler expected (plot only one at a time)
+                    handles[domain][n].set_ydata(fdf_data[:,i])
+                    fig.canvas.draw_idle()
+
                 for it, t in enumerate(times):
-                    # Search indexes withing the range
-                    if limits is not None:
-                        i = np.where((fields["y"]+dom_opts["shift"] > limits[0]) &\
-                                     (fields["y"]+dom_opts["shift"] < limits[1]) )[0]
-                    else:
-                        i = slice(None)
-                    if update:
-                        # Only one handler expected (plot only one at a time)
-                        handles[domain][n].set_ydata(fdf_data[:,i])
-                        # NOTE: Fit line
-                        # linfit = np.polyfit(fields["y"][i]+dom_opts["shift"], fdf_data[it,i], 1)
-                        # print "Intersection(%s): y = %f" % (domain, np.poly1d(linfit).roots)
-                        fig.canvas.draw_idle()
-                    else:
-                        handle = axarr[n, 0].plot(fields["y"][i]+dom_opts["shift"],\
-                                               fdf_data[it][i], dom_opts["style"], label=dom_opts["tag"])
+                    plot_label = ""
+                    if it == 0:
+                        plot_label = dom_opts["tag"]
+                    if not update:
+                        length_units_factor = get_conversion_factor("length", units)
+                        handle = axarr[n, 0].plot(length_units_factor*(fields["y"][i]+dom_opts["shift"]),\
+                                               fdf_data[it][i], dom_opts["style"], label=plot_label)
                         handles[domain][n] = handle[0]
                 try:
                     flabel = get_field_label(field_name, units)
@@ -69,6 +72,7 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
                     except Exception:
                         raise Exception("No label found for field '%s'." % field_name) 
                 axarr[n, 0].set_ylabel(flabel)
+                axarr[n, 0].legend(loc="upper left")
 
         for ax in axarr[:-1, 0]:
             ax.get_xaxis().set_visible(False)
@@ -177,7 +181,7 @@ def plot_error(plot_title, error_label, error, t, mode="mean", error_bars=False,
             for ax in axarr[i, 1:no_cols+1]:
                 ax.get_yaxis().set_visible(False)
          
-    fig.savefig(plot_title + ".jpeg")
+    fig.savefig(plot_title + ".png")
     plt.show()
 
 

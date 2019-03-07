@@ -6,27 +6,33 @@ from multiprocessing import Pool, TimeoutError
 
 #TODO: Can be added support to do VACF between different molecules?
 class Correlation(Task):
-    def __init__(self, atoms, orig_points=10, norm=True):
+    def __init__(self, atoms, corr_length=None, orig_points=10, norm=True):
         Task.__init__(self)
         self.atoms = atoms
+        self.corr_length = corr_length
         self.orig_points = orig_points
         self.norm = norm
         self.corr_func = None
 
     def _run(self):
         # Format of atoms ndarray should be 'C' and 'row' to be efficient.
-        func_points = self.atoms.shape[1] - self.orig_points + 1
-        if func_points < 1:
-            raise Exception("Number of origin points is larger or equal to number of time frames.")
-        self.corr_func = np.zeros(func_points)
-        corr_func_t = np.zeros(func_points)
+        max_corr_length = self.atoms.shape[1] - self.orig_points + 1
+        if self.corr_length is None:
+            self.corr_length = max_corr_length
+            if self.corr_length < 1:
+                raise Exception("Number of origin points is larger or equal to number of time frames.")
+        if self.corr_length > max_corr_length:
+            raise Exception("There are '{}' samples available. Correlation length cannot be greater than '{}' for orig_points={}."\
+                            .format(self.atoms.shape[1], max_corr_length, self.orig_points))
+        self.corr_func = np.zeros(self.corr_length)
+        corr_func_t = np.zeros(self.corr_length)
         N = self.atoms.shape[0]
         for orig in xrange(self.orig_points):
             self.progress = float(orig)/float(self.orig_points)*100.0
             if self.print_progress and orig % self.print_every == 0:
                 print "Progress %s%%..." % self.progress
             corr_func_t[:] = 0.0
-            end = orig+func_points
+            end = orig+self.corr_length
             for atom_vels in np.rollaxis(self.atoms[:,orig:end,:], 0):
                 vel0 = atom_vels[0,:]
                 corr_func_t += np.matmul(atom_vels, vel0)
@@ -39,8 +45,8 @@ class Correlation(Task):
         self.corr_func = self.corr_func/self.orig_points
 
 
-def correlation(atoms, orig_points=10, norm=True):
-    corr = Correlation(atoms, orig_points, norm)
+def correlation(atoms, corr_length=None, orig_points=10, norm=True):
+    corr = Correlation(atoms, corr_length, orig_points, norm)
     corr.run()
     return corr.corr_func
 
