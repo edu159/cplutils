@@ -10,11 +10,14 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
         if times is None:
             tfin = max(tidx.keys()) - tavg/2.0
             tini = tavg/2.0 + dt
+            # Correct to the closest value 
+            tfin = tfin - (tfin-tini) % dt
             nsteps = int((tfin-tini) / dt) + 1
             times = np.linspace(tini, tfin, nsteps)
         else:
             tfin = max(times)
             tini = min(times)
+        print "times:", times
 
 
     field_names = list(set([f2 for f1 in fields_in.values() for f2 in f1["fields"].keys()]))
@@ -60,8 +63,7 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
                     if it == 0:
                         plot_label = dom_opts["tag"]
                     if not update:
-                        length_units_factor = get_conversion_factor("length", units)
-                        handle = axarr[n, 0].plot(length_units_factor*(fields["y"][i]+dom_opts["shift"]),\
+                        handle = axarr[n, 0].plot(fields["y"][i]+dom_opts["shift"],\
                                                fdf_data[it][i], dom_opts["style"], label=plot_label)
                         handles[domain][n] = handle[0]
                 try:

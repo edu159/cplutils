@@ -71,8 +71,6 @@ def rdf_sub(args):
         delta = np.where(delta > 0.5 * dimensions, delta - dimensions, delta)
         return np.sqrt((delta ** 2).sum(axis=-1))
     for t in xrange(time_steps):
-        if t % int(time_steps*0.1) == 0:
-            print t
         for i in xrange(N1):
             if auto:
                 orig = i*N1-gauss_sum(i)

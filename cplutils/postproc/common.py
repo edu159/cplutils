@@ -9,7 +9,8 @@ unit_labels = {"lj" : {
                   "stress":r"(\epsilon\sigma^{-3})",
                   "temperature": r"(\epsilon K_{b}^{-1})",
                   "time": r"(\tau)",
-                  "length": r"(\sigma)", }, 
+                  "length": r"(\sigma)", 
+                  "nu": r"(\sigma^{2}\tau^{-1})", }, 
               "real" : { 
                   "velocity": r"(m/s)",
                   "density": r"(Kg/m^3)",
@@ -17,7 +18,8 @@ unit_labels = {"lj" : {
                   "stress": r"(MPa)",
                   "temperature": r"(K)",
                   "time": r"(ps)",
-                  "length": r"(nm)", }, 
+                  "length": r"(nm)",
+                  "nu": r"(m^{2}s^{-1})", }, 
         }
 
 unit_lammps2si_factors = {"lj" : {
@@ -27,15 +29,17 @@ unit_lammps2si_factors = {"lj" : {
                   "stress": 1.0,
                   "temperature": 1.0,
                   "time": 1.0,
+                  "nu": 1.0,
                   "length": 1.0, }, 
               "real" : { 
-                  "velocity": 1e5,
-                  "density": 1660.539040427164,
-                  "pressure": 0.101325, 
-                  "stress": 0.101325,
+                  "velocity": 1e5, # (Angs/fs -> m/s)
+                  "density": 1e3, # (g/cm3 -> kg/m3)
+                  "pressure": 0.101335, # (Atm -> MPa)
+                  "stress": 0.101335, # (Atm -> MPa)
                   "temperature": 1.0,
-                  "time": 1e-3,
-                  "length": 0.1, }, 
+                  "time": 1e-3, # (fs -> ps)
+                  "nu": 1e-5, # (Angs^2/fs -> m2/s)
+                  "length": 0.1, }, # (Angs -> nm)
         }
 
 
@@ -47,6 +51,7 @@ field_labels = { "velocity-x": r"V_{x}",
                   "temperature": r"T",
                   "time": r"t",
                   "length": r"L", 
+                  "nu": r"\nu",
                }
 
 def get_conversion_factor(field, units):
@@ -100,6 +105,8 @@ def compute_mean_field(data, tidx, tavg, dt=None, times=None):
         tfin = max(tidx.keys()) - tavg/2.0
         #NOTE: time 0 is not used as there is a spike in the analytical solution
         tini = tavg/2.0 + dt
+        # Correct to the closest value 
+        tfin = tfin - (tfin-tini) % dt
         nsteps = int((tfin-tini) / dt) + 1
         times = np.linspace(tini, tfin, nsteps)
     else:
@@ -108,10 +115,10 @@ def compute_mean_field(data, tidx, tavg, dt=None, times=None):
     for i, t in enumerate(times):
         begin = t - tavg/2.0
         end = t + tavg/2.0
-        # if begin == end:
-        #     data_out[i, ...] = data[tidx[begin]]
-        # else:
-        data_out[i, ...] = np.mean(data[tidx[begin]:tidx[end],...], axis=0)
+        if begin == end:
+            data_out[i, ...] = data[tidx[begin]]
+        else:
+            data_out[i, ...] = np.mean(data[tidx[begin]:tidx[end],...], axis=0)
     return times, data_out
 
 def load_fields(path, domain_fields, units, axis=["x", "y", "z"] , ignore_errors=False):
@@ -146,12 +153,6 @@ def load_fields(path, domain_fields, units, axis=["x", "y", "z"] , ignore_errors
                 field_fname = "%s-%s.npy" % (dom, f_name)
                 field_path = os.path.join(path, field_fname)
                 fields[dom]["fields"][f_name] = np.load(field_path)[..., indexes]
-                #TODO: Fix this to something more elegant
-                # if f_name == "stress-xy" and dom =="cfd":
-                #     fields[dom]["fields"][f_name] *= 1e4*9.86923
-                # if f_name == "velocity-x" and dom =="analytical":
-                #     fields[dom]["fields"][f_name] *= 1e-5
-                fields[dom]["fields"][f_name] *= get_conversion_factor(f_name, units)
                 # Remove last dimension if the size is 1. Makes comparison consistent in later operations.
                 fshape = fields[dom]["fields"][f_name].shape
                 if fshape[-1] == 1:
@@ -181,5 +182,19 @@ def compute_fields_error(fields, error_fields, f1, f2, dx, xmin, xmax, save_path
                 np.save(os.path.join(save_path, "error_%s_%s_%s" % (err_name, field_name, em)), error)
         if save_path is not None:
             np.save(os.path.join(save_path, "error_%s_y" % err_name), interp_y_1)
+
+def stats_subsamples(Ns, std_samples, mean_samples):
+    if type(Ns) == int:
+        samples = np.ones(len(mean_samples)) * Ns
+    else:
+        samples = Ns
+    meanN = np.sum(mean_samples*samples) / np.sum(samples)
+    m = np.mean(mean_samples)
+    N = np.sum(samples)
+    K = np.sum((samples - 1)*std_samples**2 + samples*(mean_samples - meanN)**2)
+    stdN = np.sqrt(K/(N - 1))
+    semN = stdN/np.sqrt(N-1)
+    return  meanN, stdN, semN
+
 
 

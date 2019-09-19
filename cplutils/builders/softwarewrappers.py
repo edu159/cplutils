@@ -63,6 +63,7 @@ class Moltemplate():
         self.template_fname = template_fname
         self.exec_path = exec_path
 
+
     def run(self):
         output = ""
         success = False
@@ -82,6 +83,7 @@ class Moltemplate():
 
         # Clean unused atomtypes
         # TODO: Refactor into a function/class to run and log outputs (packmol, moltemplate)
+        success = False
         if success:
             try:
                 output = subprocess.check_output(["cleanup_moltemplate.sh"], stderr=subprocess.STDOUT)
@@ -95,14 +97,15 @@ class Moltemplate():
 
 
 class Packmol():
-    def __init__(self, packmol_fname="system.packmol", exec_path="packmol", max_time=60):
+    def __init__(self, packmol_fname="system.packmol", exec_path="packmol", box_tol=2.0, max_time=60):
         self.exec_path = exec_path
         self.packmol_fname= packmol_fname
         self.max_time = max_time # In minutes
         self.current_const_violation = None
         self.current_dist_violation = None
-        self.box_tol = 2.0
+        self.box_tol = box_tol
         self.output_file = self._get_output_fname()
+        self.success = False
 
     def _constrain_violation(self, line):
         if "Maximum violation of target distance:" in line:
@@ -141,6 +144,7 @@ class Packmol():
                 fsize_ini = fsize_curr
 
     def run(self):
+        self.success = False
         with open(self.packmol_fname, 'r') as packmol_fname:
             p = Popen([self.exec_path], stdin=packmol_fname, 
                       stdout=PIPE, stderr=PIPE)
@@ -159,12 +163,14 @@ class Packmol():
                             p.poll()
                             if p.returncode is not None:
                                 running = False
+                                self.success = True
                         else:
                             try:
                                 if not self._constrain_violation(line) and\
                                        self._system_outputfile_exists():
                                     self._wait_for_output()
                                     running = False
+                                    self.success = True
                                     p.kill()
                             except Exception as error:
                                 p.kill()
@@ -177,14 +183,14 @@ class Packmol():
                     running = False
 
 class PackmolSystemWriter:
-    def __init__(self, box_dims, molecules, packmol_tol=1.5, seed=-1, ftype="xyz", system_name='system'):
+    def __init__(self, box_dims, molecules, box_tol=2.0, packmol_tol=1.5, seed=-1, ftype="xyz", system_name='system'):
         self.molecules = molecules
         self.box_dims = box_dims
         self.system_name = "%s.%s" % (system_name, ftype)
         self.packmol_fname ="%s.%s" % (system_name, "packmol") 
         self.lines = []
         self.packmol_tol = packmol_tol
-        self.box_tol = 2.0
+        self.box_tol = box_tol
         self.ftype = ftype
         self.seed = seed
 
@@ -194,14 +200,12 @@ class PackmolSystemWriter:
         for i in xrange(3):
             delta = abs(box_dims[i] - self.box_dims[i])
             if delta < self.box_tol:
-                print delta, self.box_tol
                 box_dims_out[i] += self.box_tol-delta
 
         for i in xrange(3,6):
             delta = abs(box_dims[i] - self.box_dims[i])
 
             if delta < self.box_tol:
-                print delta, self.box_tol
                 box_dims_out[i] -= self.box_tol-delta
 
         return box_dims_out

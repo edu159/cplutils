@@ -20,7 +20,7 @@ class MDSystemFile:
     def load(self):
         try:
             with open(self.path, 'r') as mdsystemfile:
-                self.params_data = yaml.load(mdsystemfile)
+                self.params_data = yaml.safe_load(mdsystemfile)
         except IOError as e:
             raise Exception("Problem opening '%s' file - %s." % (self.fname, e.strerror))
         except Exception as error:
@@ -53,7 +53,7 @@ class MoleculeDB:
     def load(self):
         try:
             with open(os.path.join(self.path, self.infofname), 'r') as infofile:
-                self.molecules = yaml.load(infofile)
+                self.molecules = yaml.safe_load(infofile)
         except IOError as e:
             raise Exception("Problem opening '%s' file - %s." % (self.infofname, e.strerror))
         except Exception as error:
