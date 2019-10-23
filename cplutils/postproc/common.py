@@ -9,6 +9,7 @@ unit_labels = {"lj" : {
                   "stress":r"(\epsilon\sigma^{-3})",
                   "temperature": r"(\epsilon K_{b}^{-1})",
                   "time": r"(\tau)",
+                  "srate": r"(\tau^{-1})",
                   "length": r"(\sigma)", 
                   "nu": r"(\sigma^{2}\tau^{-1})", }, 
               "real" : { 
@@ -18,6 +19,7 @@ unit_labels = {"lj" : {
                   "stress": r"(MPa)",
                   "temperature": r"(K)",
                   "time": r"(ps)",
+                  "srate": r"(s^{-1})",
                   "length": r"(nm)",
                   "nu": r"(m^{2}s^{-1})", }, 
         }
@@ -30,6 +32,7 @@ unit_lammps2si_factors = {"lj" : {
                   "temperature": 1.0,
                   "time": 1.0,
                   "nu": 1.0,
+                  "srate": 1.0,
                   "length": 1.0, }, 
               "real" : { 
                   "velocity": 1e5, # (Angs/fs -> m/s)
@@ -39,6 +42,7 @@ unit_lammps2si_factors = {"lj" : {
                   "temperature": 1.0,
                   "time": 1e-3, # (fs -> ps)
                   "nu": 1e-5, # (Angs^2/fs -> m2/s)
+                  "srate": 1e15, # (1/fs -> 1/s)
                   "length": 0.1, }, # (Angs -> nm)
         }
 
@@ -50,6 +54,7 @@ field_labels = { "velocity-x": r"V_{x}",
                   "stress-xy":r"\tau_{xy}",
                   "temperature": r"T",
                   "time": r"t",
+                  "srate": r"\dot{\gamma}",
                   "length": r"L", 
                   "nu": r"\nu",
                }

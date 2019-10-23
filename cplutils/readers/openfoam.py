@@ -20,7 +20,7 @@ from vtk.util.numpy_support import vtk_to_numpy
 #     else:
 #         return str(step)
 
-def field_reader(casedir, field_name, time_steps=[], boundaries={}):
+def field_reader(casedir, field_name, time_steps=[], boundaries={}, include_zero=True):
     def get_cell_data(reader, field):
         vtk_array = reader.GetOutput().GetCellData().GetArray(field)
         np_array = vtk_to_numpy(vtk_array)
@@ -28,7 +28,8 @@ def field_reader(casedir, field_name, time_steps=[], boundaries={}):
         return np_array, array_size
 
     def get_time_from_dirname(d):
-        return float(os.path.basename(d).split("_")[1].split(".")[0])
+        return float(os.path.basename(d).split("_")[1].split(".vtk")[0])
+
     # Init regions present
     data = {"vol": {"data":[]}}
     for b in boundaries.keys():
@@ -61,7 +62,10 @@ def field_reader(casedir, field_name, time_steps=[], boundaries={}):
             reader0 = vtk.vtkDataSetReader()
         else:
             reader0 = vtk.vtkUnstructuredGridReader()
-        reader0.SetFileName(folders_name[0])
+        case0 = 0
+        if not include_zero:
+            case0 = time_steps[1]
+        reader0.SetFileName(folders_name[case0])
         reader0.Update()
 
         try:
@@ -97,7 +101,8 @@ def field_reader(casedir, field_name, time_steps=[], boundaries={}):
         steps_index = {}
         for si, step in enumerate(time_steps):
             steps_index[step] = si
-            #
+            if si == 0 and not include_zero:
+                continue
             reader = vtk.vtkDataSetReader()
             reader.SetFileName(folders_name[step])
             reader.Update()

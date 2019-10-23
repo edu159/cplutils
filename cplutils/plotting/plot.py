@@ -17,7 +17,6 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
         else:
             tfin = max(times)
             tini = min(times)
-        print "times:", times
 
 
     field_names = list(set([f2 for f1 in fields_in.values() for f2 in f1["fields"].keys()]))
@@ -34,6 +33,7 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
     def update(val):
         plot([val], update=True)
         fig.canvas.draw_idle()
+
 
     def plot(times, update=False):
         axarr[-1, 0].set_xlabel(get_field_label("length", units)) 
@@ -66,8 +66,9 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
                         fill_color = None
                         if "filled" in dom_opts.keys() and not dom_opts["filled"]:
                             fill_color = 'none'
+                        axarr[n,0].set_xscale("log")
                         handle = axarr[n, 0].plot(fields["y"][i]+dom_opts["shift"],\
-                                               fdf_data[it][i], dom_opts["style"], markerfacecolor=fill_color, label=plot_label)
+                                                  fdf_data[it][i], dom_opts["style"], markerfacecolor=fill_color, label=plot_label)
                         handles[domain][n] = handle[0]
                 try:
                     flabel = get_field_label(field_name, units)
