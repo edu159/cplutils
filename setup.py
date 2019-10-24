@@ -21,7 +21,8 @@ setup(
     keywords = "multiscale md cfd coupling",
     url = "",
     packages=['cplutils', 'cplutils.readers', 'cplutils.plotting',
-              'cplutils.builders', 'cplutils.postproc'],
+              'cplutils.builders', 'cplutils.postproc', 'cplutils.models',
+              'cplutils.builders.surfacebuilder'],
     long_description=read('README.md'),
     classifiers=[
         "Development Status :: 3 - Alpha",
