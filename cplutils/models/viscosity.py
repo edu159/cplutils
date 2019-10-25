@@ -28,15 +28,16 @@ def cross_power_law(srate, nu0, nuInf, m, n):
 def cross_power_law_log(srate, nu0, nuInf, m, n):
     return np.log10(cross_power_law(srate, nu0, nuInf, m, n))
 
-def cross_power_law_temp((srate, T), nu0, nuInf, m, n, a1, a2, b1, k, T0):
+def cross_power_law_temp((srate, T), nu0, nuInf, m, n, a1, a2, b1, k):
     # NOTE: T0 seems not to work well if we let it as a free parameters (i.e benzene P=1000)
-    # T0 = np.mean(T) # Representative value
+    T0 = np.min(T) # Representative value
+    m = 1.0
     dT = 1.0/T - 1.0/T0
     Tfactor = np.expand_dims(np.exp(a1*dT + a2*dT**2), axis=1)
     return (Tfactor*(nuInf + (nu0 - nuInf)/(1.0+(m*np.outer((b1*T)**k,np.log10(srate+1.0)))**n))).ravel()
 
-def cross_power_law_temp_log((srate, T), nu0, nuInf, m, n, a1, a2, b1, k, T0):
-    visc = cross_power_law_temp((srate,T), nu0, nuInf, m, n, a1, a2, b1, k, T0)
+def cross_power_law_temp_log((srate, T), nu0, nuInf, m, n, a1, a2, b1, k):
+    visc = cross_power_law_temp((srate,T), nu0, nuInf, m, n, a1, a2, b1, k)
     return np.log10(visc)
 
 

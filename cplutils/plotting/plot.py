@@ -66,7 +66,7 @@ def plot_coupled(fields_in, labels=None, tidx=None, tavg=None, dt=None, times=No
                         fill_color = None
                         if "filled" in dom_opts.keys() and not dom_opts["filled"]:
                             fill_color = 'none'
-                        axarr[n,0].set_xscale("log")
+                        # axarr[n,0].set_xscale("log")
                         handle = axarr[n, 0].plot(fields["y"][i]+dom_opts["shift"],\
                                                   fdf_data[it][i], dom_opts["style"], markerfacecolor=fill_color, label=plot_label)
                         handles[domain][n] = handle[0]
